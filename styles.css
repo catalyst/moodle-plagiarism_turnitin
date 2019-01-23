@@ -225,7 +225,7 @@
 	margin-top:12px;
 	font-size: 14px;
 	font-weight: bold;
-	display: block;
+	display: block !important;
 }
 
 .pp_turnitin_ula {
