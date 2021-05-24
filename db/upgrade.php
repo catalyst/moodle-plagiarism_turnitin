@@ -532,6 +532,7 @@ function xmldb_plagiarism_turnitin_upgrade($oldversion) {
                 $dbman->add_index($table, $index);
             }
         }
+
         upgrade_plugin_savepoint(true, 2021101800, 'plagiarism', 'turnitin');
     }
 
@@ -568,7 +569,6 @@ function xmldb_plagiarism_turnitin_upgrade($oldversion) {
         }
         upgrade_plugin_savepoint(true, 2022072501, 'plagiarism', 'turnitin');
     }
-
     return $result;
 }
 
