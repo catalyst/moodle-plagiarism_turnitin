@@ -506,7 +506,7 @@ function xmldb_plagiarism_turnitin_upgrade($oldversion) {
         $index = new xmldb_index('userid', XMLDB_INDEX_UNIQUE, array('userid'));
         $field = new xmldb_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'id');
         if ($dbman->field_exists($table, $field)) {
-            // Double-check that there is no records with a NULL value.
+            // Double-check that there is sno records with a NULL value.
             if ($DB->count_records_select('plagiarism_turnitin_users', 'userid IS NULL') == 0) {
                 // Drop and then recreate unique index, otherwise Moodle will throw dependency exception.
                 if ($dbman->index_exists($table, $index)) {
