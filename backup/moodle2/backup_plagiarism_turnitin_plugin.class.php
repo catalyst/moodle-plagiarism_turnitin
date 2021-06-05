@@ -60,6 +60,24 @@ class backup_plagiarism_turnitin_plugin extends backup_plagiarism_plugin {
         $turnitincourses->add_child($turnitincourse);
 
         $turnitincourse->set_source_table('plagiarism_turnitin_courses', array('courseid' => backup::VAR_COURSEID));
+
+        // Add plagiarism_turnitin_users.
+        $turnitinusers = new backup_nested_element('turnitin_users');
+        $turnitinuser = new backup_nested_element('turnitin_user', array('id'),
+                             array('userid', 'turnitin_uid', 'turnitin_utp', 'instructor_rubrics',
+                                 'user_agreement_accepted'));
+
+        $pluginelement->add_child($turnitinusers);
+        $turnitinusers->add_child($turnitinuser);
+
+        $turnitinuser->set_source_sql('
+                    SELECT tiiu.*
+                      FROM {plagiarism_turnitin_users} tiiu
+                      JOIN {user_enrolments} ue ON tiiu.userid = ue.userid
+                      JOIN {enrol} e ON ue.enrolid = e.id
+                     WHERE e.courseid = ?',
+                    array(backup::VAR_COURSEID));
+
         return $plugin;
     }
 }
