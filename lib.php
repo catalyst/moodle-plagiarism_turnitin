@@ -3269,8 +3269,14 @@ function plagiarism_turnitin_send_queued_submissions() {
         return;
     }
 
-    $queueditems = $DB->get_records_select("plagiarism_turnitin_files", "statuscode = 'queued' OR statuscode = 'pending'",
+    $queueditems = $DB->get_records_select("plagiarism_turnitin_files", "sendattempted IS NULL AND (statuscode = 'queued' OR statuscode = 'pending')",
                                             null, 'lastmodified', '*', 0, PLAGIARISM_TURNITIN_CRON_SUBMISSIONS_LIMIT);
+
+    // Mark the elements as part of this run.
+    foreach ($queueditems as $queueditem) {
+        $time = time();
+        $DB->update_record('plagiarism_turnitin_files', ['id' => $queueditem->id, 'sendattempted' => $time]);
+    }
 
     // Submit each file individually to Turnitin.
     foreach ($queueditems as $queueditem) {
