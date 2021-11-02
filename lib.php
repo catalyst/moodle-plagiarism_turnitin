@@ -3262,6 +3262,7 @@ function plagiarism_turnitin_send_queued_submissions() {
 
     $config = plagiarism_plugin_turnitin::plagiarism_turnitin_admin_config();
     $pluginturnitin = new plagiarism_plugin_turnitin();
+    $cronsubmissionslimit = !empty($config->plagiarism_turnitin_cron_submissions_limit) ? $config->plagiarism_turnitin_cron_submissions_limit : PLAGIARISM_TURNITIN_CRON_SUBMISSIONS_LIMIT;
 
     // Don't attempt to call Turnitin if a connection to Turnitin could not be established.
     if (!$pluginturnitin->test_turnitin_connection()) {
@@ -3270,7 +3271,7 @@ function plagiarism_turnitin_send_queued_submissions() {
     }
 
     $queueditems = $DB->get_records_select("plagiarism_turnitin_files", "sendattempted IS NULL AND (statuscode = 'queued' OR statuscode = 'pending')",
-                                            null, 'lastmodified', '*', 0, PLAGIARISM_TURNITIN_CRON_SUBMISSIONS_LIMIT);
+                                            null, 'lastmodified', '*', 0, $cronsubmissionslimit);
 
     // Mark the elements as part of this run.
     foreach ($queueditems as $queueditem) {
@@ -3548,6 +3549,11 @@ function plagiarism_turnitin_send_queued_submissions() {
                 }
 
                 if (!empty($textcontent)) {
+                    if (str_word_count($textcontent) < 20) {
+                        $errorcode = 17;
+                        break;
+                    }
+
                     $textcontent = strip_tags($textcontent);
                     $title = 'quizanswer_'.$user->id."_".$cm->id."_".$cm->instance."_".$queueditem->itemid.'.txt';
                     $filename = $title;
