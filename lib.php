@@ -2167,6 +2167,15 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
         $attempt = 0;
         $tiisubmissionid = null;
 
+        // Remove error submission queue if any.
+        $DB->delete_records('plagiarism_turnitin_files', [
+                'cm' => $cm->id,
+                'userid' => $author,
+                'itemid' => $itemid,
+                'statuscode' => 'error',
+            ]
+        );
+
         // Check if file has been submitted before.
         $plagiarismfiles = plagiarism_turnitin_retrieve_successful_submissions($author, $cm->id, $identifier);
         if (count($plagiarismfiles) > 0) {
@@ -2433,6 +2442,17 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
                     $eventdata['other']['pathnamehashes'][] = $moodlefile->pathnamehash;
                 }
             }
+        }
+
+        // Remove submission from Turnitin queue if it is removed from Moodle.
+        if ($eventdata['other']['modulename'] == 'assign' && $eventdata['eventtype'] == "submission_removed") {
+            $params = [
+                'cm' => $eventdata['contextinstanceid'],
+                'userid' => $eventdata['relateduserid'],
+                'itemid' => $eventdata['objectid'],
+                'statuscode' => 'queued',
+            ];
+            $DB->delete_records('plagiarism_turnitin_files', $params);
         }
 
         // Queue every question submitted in a quiz attempt.
