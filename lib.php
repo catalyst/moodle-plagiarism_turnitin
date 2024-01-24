@@ -220,13 +220,10 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
     /**
      * Save the form data associated with the plugin
      *
-     * TODO: This code needs to be moved for 4.3 as the method will be completely removed from core.
-     * See https://tracker.moodle.org/browse/MDL-67526
-     *
      * @global type $DB
      * @param object $data the form data to save
      */
-    public function save_form_elements($data) {
+    public function save_form_data($data) {
         global $DB;
 
         $moduletiienabled = $this->get_config_settings('mod_'.$data->modulename);
@@ -264,23 +261,12 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
     /**
      * Add the Turnitin settings form to an add/edit activity page
      *
-     * TODO: This code needs to be moved for 4.3 as the method will be completely removed from core.
-     * See https://tracker.moodle.org/browse/MDL-67526
-     *
      * @param object $mform
      * @param object $context
      * @return type
      */
-    public function get_form_elements_module($mform, $context, $modulename = "") {
+    public function add_settings_form_to_activity_page($mform, $context, $modulename = "") {
         global $DB, $PAGE, $COURSE;
-
-        // This is a bit of a hack and untidy way to ensure the form elements aren't displayed
-        // twice. This won't be needed once this method goes away.
-        // TODO: Remove once this method goes away.
-        static $settingsdisplayed;
-        if ($settingsdisplayed) {
-            return;
-        }
 
         if (has_capability('plagiarism/turnitin:enable', $context)) {
             // Get Course module id and values.
@@ -583,7 +569,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
      * Load JS needed by the page.
      */
     public function load_page_components() {
-        global $PAGE;
+        global $PAGE, $CFG;
         // The function from js files by using js_call_amd will be loaded only once.
         if (static::$amdcomponentsloaded) {
             return;
@@ -593,7 +579,15 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
 
         $PAGE->requires->js_call_amd('plagiarism_turnitin/peermark', 'peermarkLaunch');
         $PAGE->requires->js_call_amd('plagiarism_turnitin/rubric', 'rubric');
-        $PAGE->requires->js_call_amd('plagiarism_turnitin/eula', 'eulaLaunch');
+
+        // Moodle 4.3 uses a new Modal dialog that is not compatible with older versions of Moodle. Depending on the user's
+        // version of Moodle, we will use the supported versin of Modal dialog
+        if ($CFG->version >= 2023100900) {
+            $PAGE->requires->js_call_amd('plagiarism_turnitin/newEulaLaunch', 'newEulaLaunch');
+        } else {
+            $PAGE->requires->js_call_amd('plagiarism_turnitin/eulaLaunch', 'eulaLaunch');
+        }
+
         $PAGE->requires->js_call_amd('plagiarism_turnitin/resend_submission', 'resendSubmission');
 
         $PAGE->requires->string_for_js('closebutton', 'plagiarism_turnitin');
@@ -1262,35 +1256,35 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
         global $DB;
 
         $submissionids = $this->fetch_updated_paper_ids_from_turnitin($cm);
-        $return = ($submissionids === false) ? false : true;
-
+        if ($submissionids === false || count($submissionids) < 1) {
+            return false;
+        }
         // Refresh updated submissions.
-        if (count($submissionids) > 0) {
-            // Initialise Comms Object.
-            $turnitincomms = new turnitin_comms();
-            $turnitincall = $turnitincomms->initialise_api();
+        $return = true;
+        // Initialise Comms Object.
+        $turnitincomms = new turnitin_comms();
+        $turnitincall = $turnitincomms->initialise_api();
 
-            // Process submissions in batches, depending on the max. number of submissions the Turnitin API returns.
-            $submissionbatches = array_chunk($submissionids, PLAGIARISM_TURNITIN_NUM_RECORDS_RETURN);
+        // Process submissions in batches, depending on the max. number of submissions the Turnitin API returns.
+        $submissionbatches = array_chunk($submissionids, PLAGIARISM_TURNITIN_NUM_RECORDS_RETURN);
 
-            foreach ($submissionbatches as $submissionsbatch) {
-                try {
-                    $submission = new TiiSubmission();
-                    $submission->setSubmissionIds($submissionsbatch);
+        foreach ($submissionbatches as $submissionsbatch) {
+            try {
+                $submission = new TiiSubmission();
+                $submission->setSubmissionIds($submissionsbatch);
 
-                    $response = $turnitincall->readSubmissions($submission);
-                    $readsubmissions = $response->getSubmissions();
+                $response = $turnitincall->readSubmissions($submission);
+                $readsubmissions = $response->getSubmissions();
 
-                    foreach ($readsubmissions as $readsubmission) {
-                        $submissiondata = $DB->get_record('plagiarism_turnitin_files',
-                                                            array('externalid' => $readsubmission->getSubmissionId()), 'id');
-                        $return = $this->update_submission($cm, $submissiondata->id, $readsubmission);
-                    }
-
-                } catch (Exception $e) {
-                    $turnitincomms->handle_exceptions($e, 'tiisubmissiongeterror', false);
-                    $return = false;
+                foreach ($readsubmissions as $readsubmission) {
+                    $submissiondata = $DB->get_record('plagiarism_turnitin_files',
+                                                        array('externalid' => $readsubmission->getSubmissionId()), 'id');
+                    $return = $this->update_submission($cm, $submissiondata->id, $readsubmission);
                 }
+
+            } catch (Exception $e) {
+                $turnitincomms->handle_exceptions($e, 'tiisubmissiongeterror', false);
+                $return = false;
             }
         }
 
@@ -1479,7 +1473,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
                 $tiisubmissions = current($tiisubmissions);
             }
 
-            if (count($tiisubmissions) > 1) {
+            if (is_array($tiisubmissions) && count($tiisubmissions) > 1) {
                 $averagegrade = null;
                 $gradescounted = 0;
                 foreach ($tiisubmissions as $tiisubmission) {
@@ -1488,7 +1482,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
                         $gradescounted += 1;
                     }
                 }
-                $grade->grade = (!is_null($averagegrade) && $gradescounted > 0) ? (int)($averagegrade / $gradescounted) : null;
+                $grade->grade = (!is_null($averagegrade) && $gradescounted > 0) ? (int)round(($averagegrade / $gradescounted)) : null;
             } else {
                 $grade->grade = $submission->getGrade();
             }
@@ -2012,7 +2006,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
 
         $submissions = $DB->get_records_select(
             'plagiarism_turnitin_files',
-            'statuscode = ? 
+            'statuscode = ?
             AND ( similarityscore IS NULL OR duedate_report_refresh = 1 )
             AND ( orcapable = ? OR orcapable IS NULL ) ',
             array('success', 1),
@@ -2906,7 +2900,7 @@ function plagiarism_turnitin_coursemodule_standard_elements($formwrapper, $mform
 
     $context = context_course::instance($formwrapper->get_course()->id);
 
-    $pluginturnitin->get_form_elements_module(
+    $pluginturnitin->add_settings_form_to_activity_page(
         $mform,
         $context,
         isset($formwrapper->get_current()->modulename) ? 'mod_'.$formwrapper->get_current()->modulename : '');
@@ -2921,7 +2915,7 @@ function plagiarism_turnitin_coursemodule_standard_elements($formwrapper, $mform
 function plagiarism_turnitin_coursemodule_edit_post_actions($data, $course) {
     $pluginturnitin = new plagiarism_plugin_turnitin();
 
-    $pluginturnitin->save_form_elements($data);
+    $pluginturnitin->save_form_data($data);
 
     return $data;
 }
