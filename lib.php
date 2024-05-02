@@ -3075,6 +3075,16 @@ function plagiarism_turnitin_send_queued_submissions() {
                         break;
                     }
 
+                    // Prevent submissions queue breaking if file is too large
+                    // and submission size check is overridden.
+                    if ($file->get_filesize() > PLAGIARISM_TURNITIN_MAX_FILE_UPLOAD_SIZE) {
+                        mtrace(get_string('errorcode'.$plagiarismfile->errorcode,
+                            'plagiarism_turnitin',
+                            display_size(PLAGIARISM_TURNITIN_MAX_FILE_UPLOAD_SIZE)));
+                        $errorcode = 2;
+                        break;
+                    }
+
                     $title = $file->get_filename();
                     $filename = $file->get_filename();
 
