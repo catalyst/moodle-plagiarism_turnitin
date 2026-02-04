@@ -15,57 +15,46 @@ final class Headers implements \ArrayAccess, \Countable {
     }
 
     /**
-     * @param string $string 
+     * @param string $string
      * @return Headers
      */
     public static function fromString($string)
     {
-        $headers = preg_split("/(\r|\n)+/", $string, -1, \PREG_SPLIT_NO_EMPTY);
-        $parse_headers = [];
-        $headersCount = count($headers);
-        for ($i = 1; $i < $headersCount; $i++) {
-            [$key, $raw_value] = explode(':', $headers[$i], 2);
-            $key = trim($key);
-            $value = trim($raw_value);
-            if (array_key_exists($key, $parse_headers)) {
-                // See HTTP RFC Sec 4.2 Paragraph 5
-                // http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.2
-                // If a header appears more than once, it must also be able to
-                // be represented as a single header with a comma-separated
-                // list of values.  We transform accordingly.
-                $parse_headers[$key] .= ',' . $value;
-            } else {
-                $parse_headers[$key] = $value;
-            }
+        $lines = preg_split("/(\r|\n)+/", $string, -1, PREG_SPLIT_NO_EMPTY);
+        array_shift($lines); // HTTP HEADER
+        $headers = array();
+        foreach ($lines as $line) {
+            list($name, $value) = explode(':', $line, 2);
+            $headers[strtolower(trim($name))] = trim($value);
         }
-        return new self($parse_headers);
+        return new self($headers);
     }
 
     /**
      * @param string $offset
+     * @return bool
      */
-    public function offsetExists($offset): bool
+    public function offsetExists($offset)
     {
-        return $this->getCaseInsensitive($offset) !== null;
+        return isset($this->headers[strtolower($offset)]);
     }
 
     /**
-     * @param mixed $offset
+     * @param string $offset
      * @return mixed
      */
-    #[\ReturnTypeWillChange]
     public function offsetGet($offset)
     {
-        return $this->getCaseInsensitive($offset);
+        if (isset($this->headers[$name = strtolower($offset)])) {
+            return $this->headers[$name];
+        }
     }
 
     /**
      * @param string $offset
      * @param string $value
      * @throws \Exception
-     * @return never
      */
-    #[\ReturnTypeWillChange]
     public function offsetSet($offset, $value)
     {
         throw new \Exception("Headers are read-only.");
@@ -74,9 +63,7 @@ final class Headers implements \ArrayAccess, \Countable {
     /**
      * @param string $offset
      * @throws \Exception
-     * @return never
      */
-    #[\ReturnTypeWillChange]
     public function offsetUnset($offset)
     {
         throw new \Exception("Headers are read-only.");
@@ -85,7 +72,7 @@ final class Headers implements \ArrayAccess, \Countable {
     /**
      * @return int
      */
-    public function count(): int
+    public function count()
     {
         return count($this->headers);
     }
@@ -98,14 +85,4 @@ final class Headers implements \ArrayAccess, \Countable {
         return $this->headers;
     }
 
-    private function getCaseInsensitive(string $key)
-    {
-        foreach ($this->headers as $header => $value) {
-            if (strtolower($key) === strtolower($header)) {
-                return $value;
-            }
-        }
-
-        return null;
-    }
 }
