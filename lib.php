@@ -2026,14 +2026,6 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
             // Only add the submission to the request if the module still exists.
             if ($cm = get_coursemodule_from_id('', $tiisubmission->cm)) {
 
-                // Updates the db field 'duedate_report_refresh' if the due date has passed within the last twenty four hours.
-                $moduledata = $DB->get_record($cm->modname, array('id' => $cm->instance));
-                $now = strtotime('now');
-                $dtdue = (!empty($moduledata->duedate)) ? $moduledata->duedate : 0;
-                if ($now >= $dtdue && $now < strtotime('+1 day', $dtdue)) {
-                    $this->set_duedate_report_refresh($tiisubmission->id, 1);
-                }
-
                 if (!isset($reportsexpected[$cm->id])) {
                     $plagiarismsettings = $this->get_settings($cm->id);
                     $reportsexpected[$cm->id] = 1;
