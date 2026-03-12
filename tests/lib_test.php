@@ -33,7 +33,12 @@ require_once($CFG->dirroot . '/mod/assign/externallib.php');
  *
  * @package turnitin
  */
-class plagiarism_turnitin_lib_testcase extends advanced_testcase {
+#[CoversFunction('plagiarism_turnitin\plagiarism_plugin_turnitin::is_plugin_configured')]
+#[CoversFunction('plagiarism_turnitin\plagiarism_plugin_turnitin::check_group_submission')]
+#[CoversFunction('plagiarism_turnitin\plagiarism_plugin_turnitin::plagiarism_get_report_gen_speed_params')]
+#[CoversFunction('plagiarism_turnitin\plagiarism_plugin_turnitin::plagiarism_set_config')]
+#[CoversFunction('plagiarism_turnitin\plagiarism_plugin_turnitin::set_duedate_report_refresh')]
+final class lib_test extends \advanced_testcase {
 
     public function test_is_plugin_configured() {
         $this->resetAfterTest();
@@ -227,5 +232,53 @@ class plagiarism_turnitin_lib_testcase extends advanced_testcase {
         $config = $plagiarismturnitin->plagiarism_turnitin_admin_config();
 
         $this->assertObjectNotHasAttribute("plagiarism_turnitin_test", $config);
+    }
+
+    /**
+     * Test set_duedate_report_refresh for single and bulk updates.
+     */
+    public function test_set_duedate_report_refresh() {
+        global $DB;
+        $this->resetAfterTest();
+
+        // Create dummy records in plagiarism_turnitin_files.
+        $record1 = (object)[
+            'cm' => 1,
+            'userid' => 1,
+            'identifier' => 'id1',
+            'statuscode' => 'queued',
+            'similarityscore' => null,
+            'attempt' => 0,
+            'transmatch' => 0,
+            'submissiontype' => 'file',
+            'duedate_report_refresh' => 0
+        ];
+        $record2 = (object)[
+            'cm' => 1,
+            'userid' => 2,
+            'identifier' => 'id2',
+            'statuscode' => 'queued',
+            'similarityscore' => null,
+            'attempt' => 0,
+            'transmatch' => 0,
+            'submissiontype' => 'file',
+            'duedate_report_refresh' => 0
+        ];
+        $id1 = $DB->insert_record('plagiarism_turnitin_files', $record1);
+        $id2 = $DB->insert_record('plagiarism_turnitin_files', $record2);
+
+        $plugin = new \plagiarism_plugin_turnitin();
+
+        // Test single update.
+        $plugin->set_duedate_report_refresh($id1, 2);
+        $updated1 = $DB->get_record('plagiarism_turnitin_files', ['id' => $id1]);
+        $this->assertEquals(2, $updated1->duedate_report_refresh);
+
+        // Test bulk update.
+        $plugin->set_duedate_report_refresh([$id1, $id2], 1);
+        $updated1 = $DB->get_record('plagiarism_turnitin_files', ['id' => $id1]);
+        $updated2 = $DB->get_record('plagiarism_turnitin_files', ['id' => $id2]);
+        $this->assertEquals(1, $updated1->duedate_report_refresh);
+        $this->assertEquals(1, $updated2->duedate_report_refresh);
     }
 }
