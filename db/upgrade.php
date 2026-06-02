@@ -587,6 +587,18 @@ function xmldb_plagiarism_turnitin_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2025073101, 'plagiarism', 'turnitin');
     }
 
+    if ($oldversion < 2026060201.03) {
+        $table = new xmldb_table('plagiarism_turnitin_files');
+
+        // Add new sendattempted field to track submission attempt timestamps.
+        $field = new xmldb_field('sendattempted', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, null, null, null, 'duedate_report_refresh');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2026060201.03, 'plagiarism', 'turnitin');
+    }
+
     return $result;
 }
 
