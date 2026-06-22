@@ -96,6 +96,8 @@ $string['reportgenspeed_resubmission'] = 'You have already submitted a paper to 
 // Plugin settings.
 $string['config'] = 'Configuration';
 $string['defaults'] = 'Default Settings';
+$string['defaultsformodule'] = 'Default Settings for {$a}';
+$string['noenabledmodules'] = 'No modules are currently enabled for Turnitin. Please enable at least one module on the <a href="settings.php">Configuration</a> page.';
 $string['showusage'] = 'Show Data Dump';
 $string['saveusage'] = 'Save Data Dump';
 $string['errors'] = 'Errors';
@@ -319,3 +321,4 @@ $string['turnitineula'] = 'Turnitin EULA';
 $string['dbexport'] = 'Database Export';
 $string['dbexporttable'] = 'Export {$a} data';
 $string['invalidtablename'] = 'Table {$a} could not be exported';
+$string['invalidmodtype'] = 'The specified module type is not an enabled supported module.';
