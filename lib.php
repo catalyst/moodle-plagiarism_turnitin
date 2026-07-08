@@ -100,14 +100,36 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
     /**
      * Get the fields to be used in the form to configure each activities Turnitin settings.
      *
+     * When $modulename is provided, plagiarism_draft_submit is only included if the
+     * module supports draft submissions (i.e. its DB table has a submissiondrafts column).
+     * When $modulename is omitted the field is always included.
+     *
+     * @param string $modulename Optional module name in component format, e.g. 'mod_assign'.
      * @return array of settings fields.
      */
-    public function get_settings_fields() {
-        return ['use_turnitin', 'plagiarism_show_student_report', 'plagiarism_draft_submit',
-            'plagiarism_allow_non_or_submissions', 'plagiarism_submitpapersto', 'plagiarism_compare_student_papers',
-            'plagiarism_compare_internet', 'plagiarism_compare_journals', 'plagiarism_report_gen',
-            'plagiarism_compare_institution', 'plagiarism_exclude_biblio', 'plagiarism_exclude_quoted',
-            'plagiarism_exclude_matches', 'plagiarism_exclude_matches_value', 'plagiarism_rubric', 'plagiarism_transmatch', ];
+    public function get_settings_fields(string $modulename = ''): array {
+        $fields = [];
+        if (empty($modulename) || self::module_supports_submission_drafts($modulename)) {
+            $fields[] = 'plagiarism_draft_submit';
+        }
+
+        return array_merge($fields, [
+            'use_turnitin',
+            'plagiarism_show_student_report',
+            'plagiarism_allow_non_or_submissions',
+            'plagiarism_submitpapersto',
+            'plagiarism_compare_student_papers',
+            'plagiarism_compare_internet',
+            'plagiarism_compare_journals',
+            'plagiarism_report_gen',
+            'plagiarism_compare_institution',
+            'plagiarism_exclude_biblio',
+            'plagiarism_exclude_quoted',
+            'plagiarism_exclude_matches',
+            'plagiarism_exclude_matches_value',
+            'plagiarism_rubric',
+            'plagiarism_transmatch',
+        ]);
     }
 
     /**
@@ -134,7 +156,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
      *
      * @return string[] enabled module names in component format, e.g. ['mod_assign', 'mod_forum']
      */
-    public static function get_enabled_supported_modules() {
+    public static function get_enabled_supported_modules(): array {
         $supported = self::get_plagiarism_supported_modules();
         $enabled = [];
         foreach ($supported as $mod) {
@@ -172,6 +194,31 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
     }
 
     /**
+     * Determine whether a module's database table contains a submissiondrafts column,
+     * meaning the module supports draft submissions.
+     *
+     * At activity level the form already contains the submissiondrafts element when
+     * applicable, so this method is primarily useful at the defaults level where no
+     * real activity form is instantiated.
+     *
+     * @param string $modulename Module name in component format, e.g. 'mod_assign'
+     * @return bool True if the module table has a submissiondrafts column.
+     */
+    public static function module_supports_submission_drafts(string $modulename): bool {
+        global $DB;
+        $modname = preg_replace('/^mod_/', '', $modulename);
+        if (empty($modname)) {
+            return false;
+        }
+        try {
+            $columns = $DB->get_columns($modname);
+        } catch (Exception $e) {
+            return false;
+        }
+        return array_key_exists('submissiondrafts', $columns);
+    }
+
+    /**
      * Get the configuration settings for the plagiarism plugin
      *
      * @param string $modulename the name of the module
@@ -201,33 +248,41 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
      *
      * @param int    $cmid          The course module id; NULL loads defaults only.
      * @param bool   $uselockedvalues Use locked values in place of saved values.
-     * @param string $modulename       Module name (e.g. 'mod_assign') to load per-modulee defaults;
+     * @param string $modulename       Module name (e.g. 'mod_assign') to load per-module defaults;
      *                                 when omitted all cm=NULL records are used.
      * @return array Turnitin settings for the module (or defaults when $cmid is null).
      */
     public function get_settings($cmid = null, $uselockedvalues = true, $modulename = '') {
         global $DB;
 
+        // Find module name from cmid.
+        if (!empty($cmid)) {
+            $cm = get_coursemodule_from_id('', $cmid);
+            $modulename = $cm ? core_component::normalize_componentname($cm->modname) : '';
+        }
+
         if (!empty($modulename)) {
+            // Per-module defaults.
             $defaults = self::get_module_defaults($modulename);
         } else {
+            // All settings, includes all module defaults.
             $defaults = $DB->get_records_menu('plagiarism_turnitin_config', ['cm' => null], '', 'name,value');
         }
 
-        // When loading per-module defaults (no specific cmid), return the
-        // filtered defaults directly — the keys are already plain field names.
-        if ($cmid === null && !empty($modulename)) {
+        // Return defaults if $cmid is not specified.
+        if (empty($cmid)) {
             return $defaults;
         }
 
+        // Course module is specified, and the defaults are per-module.
         $settings = $DB->get_records_menu('plagiarism_turnitin_config', ['cm' => $cmid], '', 'name,value');
 
-        // Don't overwrite settings with locked values (only relevant on inital module creation).
+        // Don't overwrite settings with locked values (only relevant on initial module creation).
         if ($uselockedvalues == false) {
             return $settings;
         }
 
-        // Enforce site wide config locking.
+        // Enforce per-module config locking.
         foreach ($defaults as $key => $value) {
             if (substr($key, -5) !== '_lock') {
                 continue;
@@ -315,7 +370,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
             return;
         }
 
-        $settingsfields = $this->get_settings_fields();
+        $settingsfields = $this->get_settings_fields('mod_' . $data->modulename);
         // Get current values.
         $plagiarismvalues = $this->get_settings($data->coursemodule, false);
 
@@ -394,7 +449,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
                 }
             }
 
-            $plagiarismelements = $this->get_settings_fields();
+            $plagiarismelements = $this->get_settings_fields($modulename);
 
             $turnitinview = new turnitin_view();
             $plagiarismvalues["plagiarism_rubric"] = ( !empty($plagiarismvalues["plagiarism_rubric"]) ) ?

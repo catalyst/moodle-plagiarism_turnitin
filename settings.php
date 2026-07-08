@@ -59,15 +59,16 @@ $plugindefaults = $plagiarismpluginturnitin->get_settings();
 if (!empty($action)) {
     switch ($action) {
         case "defaults":
+            require_sesskey();
             $modulename = required_param('modulename', PARAM_ALPHANUMEXT);
-            $enabledmods = $plagiarismpluginturnitin->get_enabled_supported_modules();
+            $enabledmods = plagiarism_plugin_turnitin::get_enabled_supported_modules();
 
             // Validate modulename against enabled modules.
             if (!in_array($modulename, $enabledmods)) {
                 plagiarism_turnitin_print_error('invalidmodtype');
             }
 
-            $fields = $plagiarismpluginturnitin->get_settings_fields();
+            $fields = $plagiarismpluginturnitin->get_settings_fields($modulename);
 
             $settingsfields = [];
             foreach ($fields as $field) {
@@ -117,6 +118,7 @@ if (!empty($action)) {
             break;
 
         case "deletefile":
+            require_sesskey();
             $id = optional_param('id', 0, PARAM_INT);
             $DB->update_record('plagiarism_turnitin_files', ['id' => $id, 'statuscode' => "deleted"]);
             redirect(new moodle_url('/plagiarism/turnitin/settings.php', ['do' => 'errors']));
@@ -174,7 +176,7 @@ switch ($do) {
 
     case "defaults":
         $modulename = optional_param('modulename', '', PARAM_ALPHANUMEXT);
-        $enabledmods = $plagiarismpluginturnitin->get_enabled_supported_modules();
+        $enabledmods = plagiarism_plugin_turnitin::get_enabled_supported_modules();
 
         $turnitinview->draw_settings_tab_menu('turnitindefaults', $notice);
 

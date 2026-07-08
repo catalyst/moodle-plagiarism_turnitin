@@ -14,6 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+namespace plagiarism_turnitin;
+
+defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
+require_once($CFG->dirroot . '/plagiarism/turnitin/lib.php');
+
+use PHPUnit\Framework\Attributes\CoversFunction;
+
 /**
  * Unit tests for per-module default settings feature.
  *
@@ -28,30 +37,14 @@
  *  - Isolation: module defaults do not bleed into other modules
  *
  * @package    plagiarism_turnitin
- * @copyright  2026 Monash University
+ * @copyright  2026 Catalyst IT
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
-namespace plagiarism_turnitin;
-
-defined('MOODLE_INTERNAL') || die();
-
-global $CFG;
-require_once($CFG->dirroot . '/plagiarism/turnitin/lib.php');
-
-use PHPUnit\Framework\Attributes\CoversFunction;
-
-/**
- * Tests for per-module default settings.
- *
- * @package plagiarism_turnitin
  */
 #[CoversFunction('plagiarism_plugin_turnitin::get_plagiarism_supported_modules')]
 #[CoversFunction('plagiarism_plugin_turnitin::get_enabled_supported_modules')]
 #[CoversFunction('plagiarism_plugin_turnitin::get_settings')]
 #[CoversFunction('plagiarism_plugin_turnitin::get_module_defaults')]
 final class default_settings_per_module_test extends \advanced_testcase {
-
     /** @var \plagiarism_plugin_turnitin */
     private \plagiarism_plugin_turnitin $plugin;
 
@@ -76,7 +69,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
         $record->cm          = null;
         $record->name        = $name;
         $record->value       = $value;
-        $record->config_hash = 'null_' . $name;
+        $record->config_hash = $record->cm . $record->name;
         $DB->insert_record('plagiarism_turnitin_config', $record);
     }
 
@@ -118,15 +111,32 @@ final class default_settings_per_module_test extends \advanced_testcase {
     }
 
     /**
-     * Test that known supported modules (assign, forum) are present.
-     * Note: get_plagiarism_supported_modules() still returns bare names
-     * (used internally for config key lookups).
+     * Test that every module returned by get_plagiarism_supported_modules() actually
+     * declares FEATURE_PLAGIARISM, and that at least one such module is present,
+     * and the module names contain prefix mod_.
      */
     public function test_get_plagiarism_supported_modules_contains_known_modules(): void {
+        // Dynamically collect all installed modules that declare FEATURE_PLAGIARISM.
+        $expectedmodules = [];
+        foreach (array_keys(\core_component::get_plugin_list('mod')) as $mod) {
+            if (plugin_supports('mod', $mod, FEATURE_PLAGIARISM)) {
+                $expectedmodules[] = 'mod_' . $mod;
+            }
+        }
+
+        if (empty($expectedmodules)) {
+            $this->markTestSkipped('No installed module declares FEATURE_PLAGIARISM support.');
+        }
+
         $modules = \plagiarism_plugin_turnitin::get_plagiarism_supported_modules();
 
-        $this->assertContains('mod_assign', $modules);
-        $this->assertContains('mod_forum', $modules);
+        foreach ($expectedmodules as $modcomponent) {
+            $this->assertContains(
+                $modcomponent,
+                $modules,
+                "Module '$modcomponent' declares FEATURE_PLAGIARISM but is missing from get_plagiarism_supported_modules()."
+            );
+        }
     }
 
     /**
@@ -148,6 +158,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
 
         $enabled = \plagiarism_plugin_turnitin::get_enabled_supported_modules();
 
+        $this->assertCount(1, $enabled);
         $this->assertContains('mod_assign', $enabled);
         $this->assertNotContains('mod_forum', $enabled);
     }
@@ -161,6 +172,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
 
         $enabled = \plagiarism_plugin_turnitin::get_enabled_supported_modules();
 
+        $this->assertCount(2, $enabled);
         $this->assertContains('mod_assign', $enabled);
         $this->assertContains('mod_forum', $enabled);
     }
@@ -170,12 +182,29 @@ final class default_settings_per_module_test extends \advanced_testcase {
      * even if its config key is set.
      */
     public function test_get_enabled_supported_modules_ignores_non_plagiarism_modules(): void {
-        // Mod 'resource' does not declare FEATURE_PLAGIARISM.
-        set_config('plagiarism_turnitin_mod_resource', 1, 'plagiarism_turnitin');
+        // Dynamically locate the first installed module that does NOT declare FEATURE_PLAGIARISM.
+        $nonsupportingmod = null;
+        foreach (array_keys(\core_component::get_plugin_list('mod')) as $mod) {
+            if (!plugin_supports('mod', $mod, FEATURE_PLAGIARISM)) {
+                $nonsupportingmod = $mod;
+                break;
+            }
+        }
+
+        if ($nonsupportingmod === null) {
+            $this->markTestSkipped('No installed module found that lacks FEATURE_PLAGIARISM support.');
+        }
+
+        $modcomponent = 'mod_' . $nonsupportingmod;
+        set_config('plagiarism_turnitin_' . $modcomponent, 1, 'plagiarism_turnitin');
 
         $enabled = \plagiarism_plugin_turnitin::get_enabled_supported_modules();
 
-        $this->assertNotContains('mod_resource', $enabled);
+        $this->assertNotContains(
+            $modcomponent,
+            $enabled,
+            "Module '$modcomponent' does not declare FEATURE_PLAGIARISM and must not appear in enabled modules."
+        );
     }
 
     /**
@@ -214,7 +243,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
 
     /**
      * Test that calling get_settings without a module returns all cm=NULL
-.     */
+     */
     public function test_get_settings_without_module_returns_all_defaults(): void {
         $this->insert_default('mod_assign_use_turnitin', 1);
         $this->insert_default('mod_forum_use_turnitin', 0);

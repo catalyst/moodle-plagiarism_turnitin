@@ -99,7 +99,7 @@ class turnitin_view {
 
         $tabs = [];
         foreach ($enabledmods as $mod) {
-            $displayname = get_string('pluginname', $mod);
+            $displayname = ucfirst(preg_replace('/^mod_/', '', $mod));
             $tabs[] = new tabobject(
                 'defaults_' . $mod,
                 $CFG->wwwroot . '/plagiarism/turnitin/settings.php?do=defaults&modulename=' . $mod,
@@ -297,11 +297,10 @@ class turnitin_view {
             if ($mform->elementExists('submissiondrafts') || $location == 'defaults') {
                 // Only show draft submit option for modules that support draft submissions.
                 // At activity level it is always shown when the submissiondrafts element exists.
-                // At defaults level, only show for modules known to support draft submissions.
-                $modulessupportingdrafts = ['mod_assign', 'mod_coursework'];
+                // At defaults level, check the module's DB table for a submissiondrafts column.
                 $showdraftsubmit = ($location != 'defaults')
                     || empty($modulename)
-                    || in_array($modulename, $modulessupportingdrafts);
+                    || plagiarism_plugin_turnitin::module_supports_submission_drafts($modulename);
 
                 if ($showdraftsubmit) {
                     $tiidraftoptions = [0 => get_string("submitondraft", "plagiarism_turnitin"),
