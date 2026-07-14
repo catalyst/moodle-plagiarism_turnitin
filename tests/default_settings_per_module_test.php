@@ -103,7 +103,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
      * Test that the returned list is sorted alphabetically.
      */
     public function test_get_plagiarism_supported_modules_is_sorted(): void {
-        $modules = \plagiarism_plugin_turnitin::get_plagiarism_supported_modules();
+        $modules = $this->plugin->get_plagiarism_supported_modules();
         $sorted  = $modules;
         sort($sorted);
 
@@ -128,7 +128,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
             $this->markTestSkipped('No installed module declares FEATURE_PLAGIARISM support.');
         }
 
-        $modules = \plagiarism_plugin_turnitin::get_plagiarism_supported_modules();
+        $modules = $this->plugin->get_plagiarism_supported_modules();
 
         foreach ($expectedmodules as $modcomponent) {
             $this->assertContains(
@@ -143,7 +143,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
      * Test that no modules are returned when none are enabled.
      */
     public function test_get_enabled_supported_modules_empty_when_none_enabled(): void {
-        $enabled = \plagiarism_plugin_turnitin::get_enabled_supported_modules();
+        $enabled = $this->plugin->get_enabled_supported_modules();
 
         $this->assertIsArray($enabled);
         $this->assertEmpty($enabled);
@@ -156,7 +156,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
     public function test_get_enabled_supported_modules_returns_enabled_only(): void {
         $this->enable_module('mod_assign');
 
-        $enabled = \plagiarism_plugin_turnitin::get_enabled_supported_modules();
+        $enabled = $this->plugin->get_enabled_supported_modules();
 
         $this->assertCount(1, $enabled);
         $this->assertContains('mod_assign', $enabled);
@@ -170,7 +170,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
         $this->enable_module('mod_assign');
         $this->enable_module('mod_forum');
 
-        $enabled = \plagiarism_plugin_turnitin::get_enabled_supported_modules();
+        $enabled = $this->plugin->get_enabled_supported_modules();
 
         $this->assertCount(2, $enabled);
         $this->assertContains('mod_assign', $enabled);
@@ -198,7 +198,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
         $modcomponent = 'mod_' . $nonsupportingmod;
         set_config('plagiarism_turnitin_' . $modcomponent, 1, 'plagiarism_turnitin');
 
-        $enabled = \plagiarism_plugin_turnitin::get_enabled_supported_modules();
+        $enabled = $this->plugin->get_enabled_supported_modules();
 
         $this->assertNotContains(
             $modcomponent,
@@ -323,7 +323,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
         $this->insert_default('mod_assign_plagiarism_locked_message', 'Locked by admin');
         $this->insert_default('mod_forum_use_turnitin', 0);
 
-        $moddefaults = \plagiarism_plugin_turnitin::get_module_defaults('mod_assign');
+        $moddefaults = $this->plugin->get_module_defaults('mod_assign');
 
         $this->assertArrayHasKey('use_turnitin', $moddefaults);
         $this->assertEquals(1, $moddefaults['use_turnitin']);
@@ -344,7 +344,7 @@ final class default_settings_per_module_test extends \advanced_testcase {
     public function test_display_loading_empty_for_unknown_module(): void {
         $this->insert_default('mod_assign_use_turnitin', 1);
 
-        $moddefaults = \plagiarism_plugin_turnitin::get_module_defaults('mod_quiz');
+        $moddefaults = $this->plugin->get_module_defaults('mod_quiz');
 
         $this->assertEmpty($moddefaults);
     }

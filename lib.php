@@ -109,7 +109,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
      */
     public function get_settings_fields(string $modulename = ''): array {
         $fields = [];
-        if (empty($modulename) || self::module_supports_submission_drafts($modulename)) {
+        if (empty($modulename) || $this->module_supports_submission_drafts($modulename)) {
             $fields[] = 'plagiarism_draft_submit';
         }
 
@@ -138,7 +138,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
      *
      * @return string[] module names, e.g. ['mod_assign', 'mod_forum', ...]
      */
-    public static function get_plagiarism_supported_modules() {
+    public function get_plagiarism_supported_modules() {
         $mods = array_keys(core_component::get_plugin_list('mod'));
         $supported = [];
         foreach ($mods as $mod) {
@@ -156,8 +156,8 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
      *
      * @return string[] enabled module names in component format, e.g. ['mod_assign', 'mod_forum']
      */
-    public static function get_enabled_supported_modules(): array {
-        $supported = self::get_plagiarism_supported_modules();
+    public function get_enabled_supported_modules(): array {
+        $supported = $this->get_plagiarism_supported_modules();
         $enabled = [];
         foreach ($supported as $mod) {
             if (get_config('plagiarism_turnitin', 'plagiarism_turnitin_' . $mod)) {
@@ -179,7 +179,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
      * @param string $modulename Module name in component format, e.g. 'mod_assign'
      * @return array<string, mixed> field name => stored value
      */
-    public static function get_module_defaults(string $modulename): array {
+    public function get_module_defaults(string $modulename): array {
         global $DB;
         $prefix      = $modulename . '_';
         $prefixlen   = strlen($prefix);
@@ -204,7 +204,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
      * @param string $modulename Module name in component format, e.g. 'mod_assign'
      * @return bool True if the module table has a submissiondrafts column.
      */
-    public static function module_supports_submission_drafts(string $modulename): bool {
+    public function module_supports_submission_drafts(string $modulename): bool {
         global $DB;
         $modname = preg_replace('/^mod_/', '', $modulename);
         if (empty($modname)) {
@@ -263,7 +263,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
 
         if (!empty($modulename)) {
             // Per-module defaults.
-            $defaults = self::get_module_defaults($modulename);
+            $defaults = $this->get_module_defaults($modulename);
         } else {
             // All settings, includes all module defaults.
             $defaults = $DB->get_records_menu('plagiarism_turnitin_config', ['cm' => null], '', 'name,value');

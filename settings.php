@@ -61,7 +61,7 @@ if (!empty($action)) {
         case "defaults":
             require_sesskey();
             $modulename = required_param('modulename', PARAM_ALPHANUMEXT);
-            $enabledmods = plagiarism_plugin_turnitin::get_enabled_supported_modules();
+            $enabledmods = $plagiarismpluginturnitin->get_enabled_supported_modules();
 
             // Validate modulename against enabled modules.
             if (!in_array($modulename, $enabledmods)) {
@@ -176,7 +176,7 @@ switch ($do) {
 
     case "defaults":
         $modulename = optional_param('modulename', '', PARAM_ALPHANUMEXT);
-        $enabledmods = plagiarism_plugin_turnitin::get_enabled_supported_modules();
+        $enabledmods = $plagiarismpluginturnitin->get_enabled_supported_modules();
 
         $turnitinview->draw_settings_tab_menu('turnitindefaults', $notice);
 
@@ -203,7 +203,7 @@ switch ($do) {
 
         // Load the per-module defaults from the DB, stripping the module name prefix
         // so field names match the form element names.
-        $moddefaults = plagiarism_plugin_turnitin::get_module_defaults($modulename);
+        $moddefaults = $plagiarismpluginturnitin->get_module_defaults($modulename);
 
         $mform->set_data($moddefaults);
         $mform->display();

@@ -90,7 +90,8 @@ class turnitin_view {
         global $CFG, $OUTPUT;
 
         // Enabled module which support plagiarism.
-        $enabledmods = plagiarism_plugin_turnitin::get_enabled_supported_modules();
+        $plagiarismturnitin = new plagiarism_plugin_turnitin();
+        $enabledmods = $plagiarismturnitin->get_enabled_supported_modules();
 
         if (empty($enabledmods)) {
             echo $OUTPUT->notification(get_string('noenabledmodules', 'plagiarism_turnitin'), 'info');
@@ -99,7 +100,7 @@ class turnitin_view {
 
         $tabs = [];
         foreach ($enabledmods as $mod) {
-            $displayname = ucfirst(preg_replace('/^mod_/', '', $mod));
+            $displayname = get_string('pluginname', $mod);
             $tabs[] = new tabobject(
                 'defaults_' . $mod,
                 $CFG->wwwroot . '/plagiarism/turnitin/settings.php?do=defaults&modulename=' . $mod,
@@ -300,7 +301,7 @@ class turnitin_view {
                 // At defaults level, check the module's DB table for a submissiondrafts column.
                 $showdraftsubmit = ($location != 'defaults')
                     || empty($modulename)
-                    || plagiarism_plugin_turnitin::module_supports_submission_drafts($modulename);
+                    || $plagiarismturnitin->module_supports_submission_drafts($modulename);
 
                 if ($showdraftsubmit) {
                     $tiidraftoptions = [0 => get_string("submitondraft", "plagiarism_turnitin"),
