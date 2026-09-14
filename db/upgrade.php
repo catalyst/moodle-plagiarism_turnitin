@@ -600,7 +600,7 @@ function xmldb_plagiarism_turnitin_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2025103102, 'plagiarism', 'turnitin');
     }
 
-    if ($oldversion < 2026072902) {
+    if ($oldversion < 2026072901.01) {
         // Re-add config_hash in case it is missing on sites where the column was lost outside of the upgrade path.
         $table = new xmldb_table('plagiarism_turnitin_config');
         $field = new xmldb_field('config_hash', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'value');
@@ -626,7 +626,7 @@ function xmldb_plagiarism_turnitin_upgrade($oldversion) {
             mtrace('    set config_hash NOT NULL.');
         }
 
-        upgrade_plugin_savepoint(true, 2026072902, 'plagiarism', 'turnitin');
+        upgrade_plugin_savepoint(true, 2026072901.01, 'plagiarism', 'turnitin');
     }
 
     return $result;
