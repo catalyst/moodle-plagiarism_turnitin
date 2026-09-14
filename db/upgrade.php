@@ -601,40 +601,12 @@ function xmldb_plagiarism_turnitin_upgrade($oldversion) {
     }
 
     if ($oldversion < 2026072902) {
-        // Re-add config_hash in case it is missing on sites where the column/key was lost outside of the upgrade path.
+        // Re-add config_hash in case it is missing on sites where the column was lost outside of the upgrade path.
         $table = new xmldb_table('plagiarism_turnitin_config');
         $field = new xmldb_field('config_hash', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'value');
 
         if (!$dbman->field_exists($table, $field)) {
             mtrace('  plagiarism_turnitin: config_hash column missing, repairing plagiarism_turnitin_config table...');
-
-            // Remove duplicate cm/name pairs first (keeping the most recent row per pair), otherwise the unique key below will fail.
-            $duplicategroups = $DB->get_records_sql(
-                "SELECT ".$DB->sql_concat('COALESCE(cm, -1)', "'|'", 'name')." AS grp, cm, name
-                   FROM ".$CFG->prefix."plagiarism_turnitin_config
-                  GROUP BY cm, name
-                 HAVING COUNT(*) > 1"
-            );
-            mtrace('    found '.count($duplicategroups).' duplicate cm/name group(s).');
-
-            foreach ($duplicategroups as $group) {
-                if ($group->cm === null) {
-                    $select = 'cm IS NULL AND name = :name';
-                    $params = ['name' => $group->name];
-                } else {
-                    $select = 'cm = :cm AND name = :name';
-                    $params = ['cm' => $group->cm, 'name' => $group->name];
-                }
-                // Order newest-first so the most recent row for this cm/name pair is kept.
-                $rows = $DB->get_records_select('plagiarism_turnitin_config', $select, $params, 'id DESC');
-                $ids = array_keys($rows);
-                $keptid = array_shift($ids);
-                if (!empty($ids)) {
-                    $DB->delete_records_list('plagiarism_turnitin_config', 'id', $ids);
-                    mtrace('    cm='.var_export($group->cm, true).' name='.$group->name.
-                        ': kept id '.$keptid.', deleted id(s) '.implode(',', $ids));
-                }
-            }
 
             $dbman->add_field($table, $field);
             mtrace('    added config_hash column.');
@@ -651,10 +623,7 @@ function xmldb_plagiarism_turnitin_upgrade($oldversion) {
 
             $notnullfield = new xmldb_field('config_hash', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'value');
             $dbman->change_field_notnull($table, $notnullfield);
-
-            $key = new xmldb_key('config_hash', XMLDB_KEY_UNIQUE, ['config_hash']);
-            $dbman->add_key($table, $key);
-            mtrace('    set config_hash NOT NULL and added unique key.');
+            mtrace('    set config_hash NOT NULL.');
         }
 
         upgrade_plugin_savepoint(true, 2026072902, 'plagiarism', 'turnitin');
