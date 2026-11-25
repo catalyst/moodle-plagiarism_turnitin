@@ -1,0 +1,23 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    uses: catalyst/catalyst-moodle-workflows/.github/workflows/ci.yml@main
+    secrets: inherit
+    permissions:
+      contents: write
+    with:
+      disable_behat: true
+      disable_grunt: true
+      disable_mustache: true
+      disable_phplint: true
+      disable_phpdoc: true
+      disable_phpcs: true
+      disable_ci_validate: true
+      disable_phpunit: false
+      disable_version_bump_check: false
+      enable_phpmd: false
+      enable_mssql: false
+      disable_release: true

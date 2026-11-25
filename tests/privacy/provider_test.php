@@ -54,6 +54,11 @@ use PHPUnit\Framework\Attributes\CoversFunction;
 final class provider_test extends \core_privacy\tests\provider_testcase {
 
     /**
+     * @var int Next externalid to use. The externalid column has a unique index, so every row needs its own value.
+     */
+    private static int $nextexternalid = 123456789;
+
+    /**
      * Test for _get_metadata shim.
      */
     public function test_get_metadata(): void {
@@ -221,7 +226,6 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $plagiarismfile->identifier = "abcd";
         $plagiarismfile->statuscode = "success";
         $plagiarismfile->similarityscore = 50;
-        $plagiarismfile->externalid = 123456789;
         $plagiarismfile->attempt = 1;
         $plagiarismfile->transmatch = 0;
         $plagiarismfile->lastmodified = time();
@@ -230,6 +234,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $plagiarismfile->submitter = $student->id;
 
         for ($i = 0; $i < $numsubmissions; $i++) {
+            $plagiarismfile->externalid = self::$nextexternalid++;
             $DB->insert_record('plagiarism_turnitin_files', $plagiarismfile);
         }
 
