@@ -723,7 +723,7 @@ class plagiarism_plugin_turnitin extends plagiarism_plugin {
 
             if ($cm->modname == 'forum') {
                 if (! $forum = $DB->get_record("forum", array("id" => $cm->instance))) {
-                    print_error('invalidforumid', 'forum');
+                    throw new \moodle_exception('invalidforumid', 'forum');
                 }
             }
         }
